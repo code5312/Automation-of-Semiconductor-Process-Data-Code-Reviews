@@ -85,6 +85,36 @@ CLAUDE.md 규정에 따라 각 Stage 종료 시 보고를 append한다. 설계�
 
 ---
 
+### Stage 3 보고
+
+- 만든 것:
+  - `fab_review/analysis/ast_utils.py` (AST 리터럴 추출 저수준 헬퍼)
+  - `fab_review/analysis/values.py` (`GrainInfo`, `SeriesInfo`, `FlowContext`)
+  - `fab_review/analysis/merge_ir.py` (`parse_merge_call`, `join_key_columns`, `effective_how`, `finer_entity`, `compute_merge_result_grain` — 체커 공용)
+  - `fab_review/analysis/flow.py` (`resolve_grain`, `resolve_series`, `build_scope_symtab`, `collect_merge_sightings`, `analyze_file`)
+  - `fab_review/analysis/parser.py`, `fab_review/analysis/discovery.py`
+  - `fab_review/models.py` (`Finding`)
+  - `tests/{test_flow,test_merge_ir,test_parser_discovery,test_models}.py` (40건)
+- 검증:
+  - `python -m pytest -q` → `74 passed` (Stage 0~2의 34건 포함)
+  - 데모 스크립트 4개 각각의 엔티티·입도 추적 결과를 수동으로도 출력해 확인:
+    - `bug_unit.py`: `tool_a_df`/`tool_b_df` unknown(계약 미등록 소스), `pressure_a`/`pressure_b`는 Series로 정확히 추출
+    - `bug_time.py`: `rf_power_df`/`gas_flow_df` 모두 `fdc_trace`, sensor가 각각 `rf_power`/`gas_flow`로 다르게 식별됨
+    - `bug_join.py`: `yield_df`=wafer, `metrology_df`=metrology, `wafer_yield`는 FAB-J001 위반으로 unknown
+    - `normal.py`: `wafer_metrology`(groupby 후 입도=wafer 키)까지 거쳐 `wafer_yield`가 정상적으로 wafer 입도 유지
+- 체크한 checklist 항목: 3절 전체
+- 설계서와 다르게 한 것 / 가정한 것:
+  - **merge 결과의 "더 세밀한 쪽 입도" 판단 기준을 계약상 엔티티 위치가 아니라 각 피연산자의 현재 유효 키(`current_key`)로 바꿨다.** 최초 구현(엔티티의 조상 위치만 비교)으로는 `metrology_df.groupby(["lot_id","wafer_id"]).mean()`처럼 이미 wafer 입도로 집계된 결과를 다시 wafer와 조인했을 때, 엔티티 이름이 여전히 "metrology"로 남아있어서 결과가 틀리게 "metrology(site 입도)"로 판정되는 문제를 발견했다. `current_key` 집합끼리 비교해 더 넓은(포함하는) 쪽을 지도록 고쳤고, `tests/test_merge_ir.py`에 두 경우(원본 metrology vs 집계된 metrology)를 모두 테스트로 고정했다.
+  - **부작용 확인**: 이 "공통 조상 키 포함 여부" 검사는 서로 다른 두 엔티티 사이의 조인뿐 아니라 **같은 엔티티끼리의 병합**에도 그대로 적용된다. 예를 들어 `bug_time.py`의 `rf_power_df.merge(gas_flow_df, on=["tool_id","timestamp"])`는 둘 다 `fdc_trace`인데 계약상 `fdc_trace`의 key(`[tool_id, chamber_id, timestamp]`)에서 `chamber_id`가 빠져 있어, FAB-T001이 노리는 위반과 별개로 FAB-J001 스타일 판정에서도 "조인 키 불충분"으로 unknown이 된다. 이건 버그가 아니라 규칙을 문자 그대로 적용한 결과라고 판단했다(여러 챔버가 있었다면 실제로 fan-out 위험이 있음) — 다만 Stage 4에서 이 merge 한 줄에 FAB-J001과 FAB-T001이 동시에 뜰 수 있다는 점을 미리 기록해둔다.
+  - `.groupby()` 뒤에 흔히 붙는 집계 메서드(`mean`, `sum`, `agg` 등)는 grain을 그대로 유지하는 것으로 단순화했다. 집계가 groupby 없이 단독으로 쓰이면(`df.mean()`) 실제로는 스칼라/Series가 되어 "입도 유지"라는 말이 정확하지 않지만, 현재 어떤 체커도 이 경우를 검사하지 않아 실질적 영향은 없다.
+  - `merge_asof`, `sort_values`, `reset_index` 등 목록에 없는 메서드 호출은 전부 `unknown`으로 처리한다. 이 메서드들은 원래 "안전한 대안"으로 쓰이는 것들이라, unknown으로 처리돼도 어떤 체커에도 영향이 없다(체커가 검사하는 건 `merge`/`.merge()`/`.join()`뿐).
+- 도메인 검증 필요 값 (이번에 새로 추가된 것): 없음
+- 다음 Stage 전에 결정이 필요한 질문:
+  - `bug_time.py`가 FAB-T001과 함께 FAB-J001(또는 그 정보용 변형)도 같이 낼 수 있다는 점이 괜찮은지, 아니면 Stage 4에서 "같은 엔티티끼리의 병합은 J001 대상에서 제외"하는 예외를 추가해야 하는지.
+- 제안 커밋 메시지: `Stage 3: AST 흐름 추적기·merge 해석기·Finding 모델 구현`
+
+---
+
 ## 도메인 검증 필요 값 (누적 목록)
 
 - `contracts/contract.yaml: sensors.rf_power.sampling_period = "1s"` — 출처 없음, Stage 1에서 임의 지정

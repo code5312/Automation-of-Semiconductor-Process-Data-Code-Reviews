@@ -75,24 +75,24 @@
 
 담당(제안): Python·최적화 경험자
 
-- [ ] 입력 어댑터: 파일 / 디렉토리 → 소스 텍스트
-- [ ] AST 파서 + 위치 정보 (파일, 줄, 컬럼)
-- [ ] 공통 Finding 모델: `rule_id`, `severity`(error/warning/info), 위치, 메시지, 근거, 수정 제안, `contract_version`, 판정 출처(rule/llm)
-- [ ] **공정 데이터 흐름 추적기**
-  - [ ] 로드 지점 탐지: `read_csv` / `read_parquet` / `read_sql`의 **문자열 리터럴** 인자 → `sources` 패턴 매칭
-  - [ ] 경로가 변수·f-string이면 `unknown` 엔티티로 표시
-  - [ ] 심볼 테이블: 변수명 → {엔티티, 입도 키, 알려진 컬럼}
-  - [ ] 입도 유지 전파: 단순 할당, 필터링(`df[mask]`), 컬럼 선택, `.copy()`
-  - [ ] 입도 변경 전파: `groupby(keys).agg(...)` → 입도 = keys
-  - [ ] `merge` 결과의 입도 계산
-  - [ ] 추적 실패 시 `info`(판정 불가)로 넘기는 경로
-- [ ] 컬럼 참조 추출: `df["col"]`, `df.col`, `df[["a", "b"]]`
-- [ ] merge 호출 해석기 (체커 공용)
-  - [ ] `pd.merge(a, b, ...)` / `a.merge(b, ...)` 두 형태
-  - [ ] `on` / `left_on`·`right_on`
-  - [ ] `on`이 문자열인 경우와 리스트인 경우
-  - [ ] `how` 생략 시 **inner**로 해석
-  - [ ] `df.join()`(인덱스 기준)은 MVP에서 `info` 처리
+- [x] 입력 어댑터: 파일 / 디렉토리 → 소스 텍스트 (`fab_review/analysis/discovery.py`)
+- [x] AST 파서 + 위치 정보 (파일, 줄, 컬럼) (`fab_review/analysis/parser.py`; 줄·컬럼은 ast 노드의 `lineno`/`col_offset`을 Stage 4 체커가 그대로 씀)
+- [x] 공통 Finding 모델: `rule_id`, `severity`(error/warning/info), 위치, 메시지, 근거, 수정 제안, `contract_version`, 판정 출처(rule/llm) (`fab_review/models.py`)
+- [x] **공정 데이터 흐름 추적기** (`fab_review/analysis/flow.py`)
+  - [x] 로드 지점 탐지: `read_csv` / `read_parquet` / `read_sql`의 **문자열 리터럴** 인자 → `sources` 패턴 매칭
+  - [x] 경로가 변수·f-string이면 `unknown` 엔티티로 표시
+  - [x] 심볼 테이블: 변수명 → {엔티티, 입도 키, 알려진 컬럼}
+  - [x] 입도 유지 전파: 단순 할당, 필터링(`df[mask]`), 컬럼 선택, `.copy()`
+  - [x] 입도 변경 전파: `groupby(keys).agg(...)` → 입도 = keys
+  - [x] `merge` 결과의 입도 계산
+  - [x] 추적 실패 시 `info`(판정 불가)로 넘기는 경로 (`unknown_reason` — 실제 info 등급 부여는 Stage 4)
+- [x] 컬럼 참조 추출: `df["col"]`, `df.col`, `df[["a", "b"]]`
+- [x] merge 호출 해석기 (체커 공용) (`fab_review/analysis/merge_ir.py`)
+  - [x] `pd.merge(a, b, ...)` / `a.merge(b, ...)` 두 형태
+  - [x] `on` / `left_on`·`right_on`
+  - [x] `on`이 문자열인 경우와 리스트인 경우
+  - [x] `how` 생략 시 **inner**로 해석
+  - [x] `df.join()`(인덱스 기준)은 MVP에서 `info` 처리 (감지만 하고, 등급 부여는 Stage 4)
 
 **완료 기준**: 데모 스크립트 4개에서 각 DataFrame의 엔티티·입도가 기대대로 추적되는 단위 테스트 통과
 
