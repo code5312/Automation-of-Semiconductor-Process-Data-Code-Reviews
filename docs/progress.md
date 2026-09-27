@@ -117,6 +117,33 @@ CLAUDE.md 규정에 따라 각 Stage 종료 시 보고를 append한다. 설계�
 
 ---
 
+### Stage 4 보고
+
+- 만든 것:
+  - `fab_review/checkers/catalog.py` (규칙 4개의 설명·예시·수정 제안 템플릿)
+  - `fab_review/checkers/unit.py` (FAB-U001: BinOp/Compare/`pd.concat` 피연산자 쌍을 검사)
+  - `fab_review/checkers/timeseries.py` (FAB-T001: merge_sightings 중 grain="time" 두 엔티티의 timestamp 정확 일치 병합 검사)
+  - `fab_review/checkers/join.py` (FAB-J001/J002)
+  - `fab_review/checkers/__init__.py` (`run_all()` — 3개 체커 통합 진입점)
+  - `tests/test_checkers.py` (23건: 완료 기준 5건 + 규칙별 양성/음성)
+- 검증:
+  - `python -m pytest -q` → `94 passed` (Stage 0~3의 76건 포함, 위 Stage 3 후속 수정의 2건 포함)
+  - 데모 4개에 대해 `run_all()` 결과를 직접 출력해 확인:
+    - `bug_unit.py` → `[ERROR] FAB-U001` 1건
+    - `bug_time.py` → `[ERROR] FAB-T001` 1건
+    - `bug_join.py` → `[ERROR] FAB-J001` + `[ERROR] FAB-J002` 2건
+    - `normal.py` → **0건** (error뿐 아니라 info까지 전부 0건)
+- 체크한 checklist 항목: 4절 [P] 전체(완료 기준 포함)
+- 설계서와 다르게 한 것 / 가정한 것:
+  - unit_checker가 산술(`BinOp`)·비교(`Compare`)·`pd.concat([...])` 세 가지 패턴만 검사한다. `.sum()`/`.mean()` 등 집계 결과끼리의 연산은 피연산자를 "이름"으로 환원할 수 없어(Call 노드) 대상에서 자동으로 빠진다 — 오탐 방지 목적의 의도된 제한이다.
+  - FAB-J002 판정에서, 두 엔티티 중 **하나도 알 수 없으면 아예 검사 대상에서 제외**했다(info도 내지 않음). CLAUDE.md 규칙표의 "한쪽 엔티티를 알 수 없음 → info"는 FAB-J001이 이미 담당하고 있어서, 같은 상황에 대해 J001과 J002가 중복으로 info를 내는 것을 피했다.
+  - Finding의 `message`/`suggestion`은 `checkers/catalog.py`의 템플릿과 각 체커가 만든 구체적 근거(엔티티명, 단위, 센서, 누락 키 등)를 합쳐서 만든다.
+- 도메인 검증 필요 값 (이번에 새로 추가된 것): 없음
+- 다음 Stage 전에 결정이 필요한 질문: 없음
+- 제안 커밋 메시지: `Stage 4: 체커 3종(unit/timeseries/join) 및 규칙 카탈로그 구현`
+
+---
+
 ## 도메인 검증 필요 값 (누적 목록)
 
 - `contracts/contract.yaml: sensors.rf_power.sampling_period = "1s"` — 출처 없음, Stage 1에서 임의 지정

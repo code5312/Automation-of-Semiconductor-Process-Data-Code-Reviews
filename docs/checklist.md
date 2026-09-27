@@ -100,29 +100,29 @@
 
 ## 4. 체커 3종 — 정적 규칙 [P]
 
-- [ ] 규칙 카탈로그 (`checkers/catalog.py`): 규칙 ID별 설명, 예시, 수정 제안 템플릿
+- [x] 규칙 카탈로그 (`checkers/catalog.py`): 규칙 ID별 설명, 예시, 수정 제안 템플릿
 
 ### unit_checker (물리량 정합성) — 담당(제안): Python·최적화 경험자
-- [ ] 컬럼명·변수명 → (family, 단위) 추출기
-  - [ ] **접미사 위치** + **계약에 등록된 토큰만** 단위로 인정
-  - [ ] `_c`, `_k`, `_a` 같은 짧고 모호한 토큰은 LLM 후보 또는 unknown으로
-- [ ] FAB-U001: 같은 family·다른 단위 간 산술 / 비교 / concat 탐지
+- [x] 컬럼명·변수명 → (family, 단위) 추출기
+  - [x] **접미사 위치** + **계약에 등록된 토큰만** 단위로 인정
+  - [x] `_c`, `_k`, `_a` 같은 짧고 모호한 토큰은 unknown(info)으로 (LLM 후보는 [M], 스코프 밖)
+- [x] FAB-U001: 같은 family·다른 단위 간 산술 / 비교 / concat 탐지
 - [ ] [M] 단위가 이름에 없는 경우(`p1`, `val`) LLM 후보 생성
 - [ ] [M] (선택) pint 기반 검증 시도
 
 ### timeseries_checker (시간 정합성) — 담당(제안): 센서데이터 경험자
-- [ ] FAB-T001: 샘플링 주기가 다른 `time` 입도 엔티티끼리 timestamp 정확 일치 merge 탐지
-- [ ] 수정 제안 템플릿: `merge_asof(direction, tolerance=계약 주기 기준)` 또는 공통 주기 resample
+- [x] FAB-T001: 샘플링 주기가 다른 `time` 입도 엔티티끼리 timestamp 정확 일치 merge 탐지
+- [x] 수정 제안 템플릿: `merge_asof(direction, tolerance=계약 주기 기준)` 또는 공통 주기 resample
 - [ ] [M] step 단위 집계에서 시간 윈도우 미사용 탐지
 - [ ] [M] `merge_asof` tolerance·resample 주기 적절성 LLM 후보 생성
 
 ### join_checker (계보·입도 정합성) — 담당(제안): 챗봇·API 연동 경험자
-- [ ] FAB-J001: 두 엔티티 입도에 필요한 키가 조인 키에서 빠진 경우 탐지
-- [ ] FAB-J002: `coverage: sampled` 엔티티와 inner join(`how` 생략 포함) 탐지
-- [ ] 수정 제안 템플릿: 입도 맞춘 집계 → 전체 키 조인 + `validate` + `how="left"` + `indicator`
+- [x] FAB-J001: 두 엔티티 입도에 필요한 키가 조인 키에서 빠진 경우 탐지 (단, 같은 엔티티끼리의 병합은 제외 — 사용자 결정, Stage 3 참고)
+- [x] FAB-J002: `coverage: sampled` 엔티티와 inner join(`how` 생략 포함) 탐지
+- [x] 수정 제안 템플릿: 입도 맞춘 집계 → 전체 키 조인 + `validate` + `how="left"` + `indicator`
 - [ ] [M] 계약에 없는 테이블 조합 → LLM 관계 추론 → 계약 추가 제안 생성
 
-**완료 기준**: 버그 스크립트 3개에서 해당 규칙 ID가 error로 1건 이상, 정상 스크립트에서 0건
+**완료 기준**: 버그 스크립트 3개에서 해당 규칙 ID가 error로 1건 이상, 정상 스크립트에서 0건 — **충족** (`tests/test_checkers.py`로 고정)
 
 ---
 
