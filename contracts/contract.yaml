@@ -1,0 +1,60 @@
+# 공정 데이터 계약 v0.1.0
+# 구조는 docs/design.md 8.2절을 따른다. 아래 두 항목은 CLAUDE.md가 허용한
+# "판정에 꼭 필요한 최소 확장"이며 docs/progress.md에 기록돼 있다.
+#   1) sources[].sensor + 최상위 sensors: FAB-T001의 센서 식별용
+#   2) entities.metrology / entities.step_event 의 parent: FAB-J001의 공통 조상 계산용
+#
+# sensors.*.sampling_period, entities.*의 구체적 값은 예시이며 도메인 팀 검증이 필요하다.
+
+contract_version: "0.1.0"
+
+unit_families:
+  pressure:    [mTorr, Torr, Pa]
+  gas_flow:    [sccm, slm]
+  temperature: [degC, K]
+  thickness:   [angstrom, nm]
+
+parameters:
+  chamber_pressure: { family: pressure,  name_patterns: ["*pressure*", "*_pres_*"] }
+  gas_flow:         { family: gas_flow,  name_patterns: ["*flow*", "*mfc*"] }
+  film_thickness:   { family: thickness, name_patterns: ["*thk*", "*thickness*"] }
+
+entities:
+  lot:
+    key: [lot_id]
+    grain: lot
+  wafer:
+    key: [lot_id, wafer_id]
+    grain: wafer
+    parent: lot
+  step_event:
+    key: [lot_id, wafer_id, step_id]
+    grain: wafer_step
+    parent: wafer
+    time_window: [step_start, step_end]
+  fdc_trace:
+    key: [tool_id, chamber_id, timestamp]
+    grain: time
+    sampling_period: per_sensor  # 센서별 실제 주기는 아래 sensors: 참고
+  metrology:
+    key: [lot_id, wafer_id, site_id]
+    grain: site
+    parent: wafer
+    coverage: sampled  # 표본 웨이퍼·사이트만 측정
+
+relationships:
+  - { from: lot,   to: wafer,      cardinality: "1:N" }
+  - { from: wafer, to: metrology,  cardinality: "1:N", coverage: sampled }
+  - { from: wafer, to: step_event, cardinality: "1:N" }
+
+sources:
+  - { pattern: "fdc_rf_*",      entity: fdc_trace, sensor: rf_power }
+  - { pattern: "fdc_gas_*",     entity: fdc_trace, sensor: gas_flow }
+  - { pattern: "*metrology*",   entity: metrology }
+  - { pattern: "*lot_hist*",    entity: step_event }
+  - { pattern: "*wafer_yield*", entity: wafer }
+  - { pattern: "*lot_master*",  entity: lot }
+
+sensors:
+  rf_power: { sampling_period: "1s" }   # 예시 값 — 도메인 팀 검증 필요
+  gas_flow: { sampling_period: "5s" }   # 예시 값 — 도메인 팀 검증 필요

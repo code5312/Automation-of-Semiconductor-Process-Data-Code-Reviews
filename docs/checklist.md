@@ -32,18 +32,18 @@
 
 담당(제안): 반도체 패키징·불량분석 경험자(계약 오너), 센서데이터 경험자(샘플링 주기 항목)
 
-- [ ] `contracts/contract.yaml` v0.1 작성 (설계서 8.2절 구조)
-  - [ ] `unit_families`: 압력, 유량, 온도, 두께
-  - [ ] `parameters`: 공정 파라미터 ↔ family ↔ 이름 패턴
-  - [ ] `entities`: lot, wafer, step_event, fdc_trace, metrology (키, 입도, 커버리지, 시간 윈도우)
-  - [ ] `relationships`: lot:wafer = 1:N, wafer:metrology = 1:N(sampled)
-  - [ ] `sources`: 파일/테이블 이름 패턴 → 엔티티
-- [ ] 센서별 샘플링 주기 표 작성 (`fdc_trace`의 `per_sensor` 실제 값)
-- [ ] 계약 값의 출처 기록 (공개 자료 / 교재 / 팀원 경험 중 무엇인지)
-- [ ] pydantic 계약 스키마 모델 작성
-- [ ] 계약 로더 작성 — 스키마 위반 시 로딩 단계에서 명확한 에러
-- [ ] 이름 패턴 매처 작성 (`fnmatch` 수준)
-- [ ] 계약 버전(`contract_version`)을 결과에 기록할 수 있게 노출
+- [x] `contracts/contract.yaml` v0.1 작성 (설계서 8.2절 구조 + sensor/parent 확장)
+  - [x] `unit_families`: 압력, 유량, 온도, 두께
+  - [x] `parameters`: 공정 파라미터 ↔ family ↔ 이름 패턴
+  - [x] `entities`: lot, wafer, step_event, fdc_trace, metrology (키, 입도, 커버리지, 시간 윈도우)
+  - [x] `relationships`: lot:wafer = 1:N, wafer:metrology = 1:N(sampled)
+  - [x] `sources`: 파일/테이블 이름 패턴 → 엔티티
+- [x] 센서별 샘플링 주기 표 작성 (`fdc_trace`의 `per_sensor` 실제 값) — `sensors:` 맵, 예시 값(도메인 검증 필요)
+- [ ] 계약 값의 출처 기록 (공개 자료 / 교재 / 팀원 경험 중 무엇인지) — 현재 값은 AI가 임시로 채운 예시일 뿐 출처 없음. 보류.
+- [x] pydantic 계약 스키마 모델 작성
+- [x] 계약 로더 작성 — 스키마 위반 시 로딩 단계에서 명확한 에러
+- [x] 이름 패턴 매처 작성 (`fnmatch` 수준)
+- [x] 계약 버전(`contract_version`)을 결과에 기록할 수 있게 노출
 - [ ] [M] 도메인 팀원용 계약 작성 가이드 (1~2쪽)
 
 **완료 기준**: 잘못된 계약 파일(키 누락, 알 수 없는 family)이 로딩 시 거부되는 테스트 통과
