@@ -61,10 +61,35 @@ CLAUDE.md 규정에 따라 각 Stage 종료 시 보고를 append한다. 설계�
 
 ---
 
+### Stage 2 보고
+
+- 만든 것:
+  - `synth/generate.py` (고정 시드 `SEED=20260101`, 로트/웨이퍼 계층, 센서별 다른 주기의 FDC trace, step 이벤트, 표본 계측, 장비별 다른 단위 압력 로그)
+  - `samples/data/*.csv` 8개 (커밋된 고정 시드 생성 결과 — 재생성해도 바이트 단위로 동일함을 테스트로 고정)
+  - `samples/{bug_unit,bug_time,bug_join,normal}.py`
+  - `tests/test_samples_run.py` (10건: 결정론 검증, 커밋된 fixture와 재생성 결과 비교, 스크립트 4개 무예외 실행, 버그 vs 정상 수치 비교)
+- 검증:
+  - `python -m pytest -q` → `34 passed` (Stage 0~1의 24건 포함)
+  - `python samples/{bug_unit,bug_time,bug_join,normal}.py` 4개 모두 직접 실행 확인, 예외 없음
+  - 수치 비교(결정론적으로 고정됨): 조인 행 수 bug=1250 vs normal=25, 시간 병합 행 수 bug=12 vs normal=60, 압력 UCL bug=94.063 vs normal=58.721 — 전부 다름을 확인
+- 체크한 checklist 항목: 2절 전체
+- 설계서와 다르게 한 것 / 가정한 것:
+  - **"로트당 웨이퍼 수는 계약 기준"이라는 체크리스트 문구를 따르지 않았다.** 웨이퍼 수·site 수·계측 커버리지 비율은 어떤 FAB-U/T/J 규칙의 판정에도 쓰이지 않는, 순수 합성 데이터 생성용 수치라서 계약(판정 기준)에 넣지 않고 `synth/generate.py`의 상수로 뒀다. 계약은 "판정에 꼭 필요한 것만 최소로 확장"한다는 CLAUDE.md 원칙을 그대로 적용한 결정이다. 재확인 필요.
+  - `pandas`가 아직 결측치 없는 완전한 표본이라 NaN 처리 관련 코드는 데모에 넣지 않았다 (범위 밖).
+  - 데모 스크립트에 `sys.stdout.reconfigure(encoding="utf-8")`를 추가했다. Windows 콘솔이 한글 출력을 cp949로 깨뜨리는 것을 실제로 확인해서 추가했다 — CLI뿐 아니라 앞으로 만드는 모든 실행 가능한 스크립트에 이 패턴을 적용한다.
+  - `samples/data/`의 CSV를 저장소에 커밋했다 (재생성 가능하지만, Stage 5 CLI가 바로 데모를 돌려볼 수 있게 하기 위함). 고정 시드라 재생성과 바이트 단위로 동일함을 테스트로 고정해둠.
+- 도메인 검증 필요 값 (이번에 새로 추가된 것): `synth/generate.py`의 `WAFERS_PER_LOT=25`, `SITES_PER_WAFER=5`, `SAMPLED_WAFER_RATIO=0.4`, `TRACE_DURATION_S=60`, `STEP_DURATION_S=300`, `SEED=20260101` — 전부 출처 없는 예시 값.
+- 다음 Stage 전에 결정이 필요한 질문:
+  - 웨이퍼 수 등 합성 데이터 상수를 계약이 아닌 `synth/generate.py`에 둔 것에 동의하는지.
+- 제안 커밋 메시지: `Stage 2: 합성 공정 데이터 생성기와 데모 스크립트 4개 추가`
+
+---
+
 ## 도메인 검증 필요 값 (누적 목록)
 
 - `contracts/contract.yaml: sensors.rf_power.sampling_period = "1s"` — 출처 없음, Stage 1에서 임의 지정
 - `contracts/contract.yaml: sensors.gas_flow.sampling_period = "5s"` — 출처 없음, Stage 1에서 임의 지정
+- `synth/generate.py: SEED=20260101, WAFERS_PER_LOT=25, SITES_PER_WAFER=5, SAMPLED_WAFER_RATIO=0.4, TRACE_DURATION_S=60, STEP_DURATION_S=300` — 전부 출처 없음, Stage 2에서 임의 지정
 
 ## 설계서 대비 단순화/확장 기록 (누적 목록)
 
@@ -73,3 +98,4 @@ CLAUDE.md 규정에 따라 각 Stage 종료 시 보고를 append한다. 설계�
 - **계약 확장 (Stage 1, 재확인 필요)**: `entities.step_event.parent: wafer` 명시 — metrology와 같은 이유로 일관성을 위해 추가했으나 별도 승인은 못 받음.
 - **sources 목록 보강 (Stage 1, 재확인 필요)**: `*wafer_yield*`→`wafer`, `*lot_master*`→`lot` 패턴 추가, `fdc_*`를 `fdc_rf_*`/`fdc_gas_*`로 분리. 설계서 예시에는 없던 항목.
 - **FAB-J002 단순화 (CLAUDE.md에 이미 명시됨)**: 설계서 9.3절의 "inner join 결과가 수율 분모 계산에 쓰임"을 "coverage: sampled 엔티티와 how 생략 조인"으로 단순화. (아직 구현 전, Stage 4에서 실제로 반영 예정 — 기록은 미리 남겨둠)
+- **체크리스트 문구 대비 변경 (Stage 2, 재확인 필요)**: "로트당 웨이퍼 수는 계약 기준"이라는 checklist 2절 문구를 따르지 않고, 웨이퍼 수 등 합성 데이터 상수를 `synth/generate.py`에 두었다. 이유: 어떤 FAB 규칙 판정에도 쓰이지 않는 값이라 계약(판정 기준 문서)에 넣을 필요가 없다고 판단.
