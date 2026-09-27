@@ -1,7 +1,6 @@
 """fab-review CLI 진입점.
 
-Stage 0에서는 인자 구조만 만든다. `check` 서브커맨드의 실제 분석 로직은
-Stage 1(계약 로딩)~5(리포트)에서 채운다.
+실행 예: ``fab-review check samples/ --contract contracts/contract.yaml --format md --out report.md``
 """
 
 from __future__ import annotations
@@ -9,6 +8,16 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+
+from fab_review.analysis.discovery import discover_python_files
+from fab_review.analysis.parser import ParseError, parse_file
+from fab_review.checkers import run_all
+from fab_review.contract.loader import ContractError, load_contract
+from fab_review.contract.schema import Contract
+from fab_review.models import Finding
+from fab_review.report import dedupe_and_sort
+from fab_review.report.json_report import render_json
+from fab_review.report.markdown import render_markdown
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -38,13 +47,58 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _handle_check(args: argparse.Namespace) -> int:
-    # Stage 1~5에서 계약 로딩, 분석 코어, 체커, 리포트로 채운다.
-    print("[INFO] check 명령은 아직 구현되지 않았습니다 (Stage 0 스캐폴딩).")
-    return 0
+    try:
+        contract = load_contract(args.contract)
+    except ContractError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
+    try:
+        files = discover_python_files(args.path)
+    except (FileNotFoundError, ValueError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
+    findings: list[Finding] = []
+    for file_path in files:
+        try:
+            tree = parse_file(file_path)
+        except ParseError as exc:
+            findings.append(_parse_error_finding(file_path, contract, str(exc)))
+            continue
+        findings.extend(run_all(tree, file_path.as_posix(), contract))
+
+    findings = dedupe_and_sort(findings)
+
+    if args.format == "json":
+        report_text = render_json(findings, contract.contract_version)
+    else:
+        report_text = render_markdown(findings, contract.contract_version)
+
+    if args.out is not None:
+        args.out.write_text(report_text, encoding="utf-8")
+    else:
+        print(report_text, end="")
+
+    return 1 if any(f.severity == "error" for f in findings) else 0
+
+
+def _parse_error_finding(file_path: Path, contract: Contract, message: str) -> Finding:
+    return Finding(
+        rule_id="FAB-PARSE",
+        severity="info",
+        file=file_path.as_posix(),
+        line=1,
+        col=0,
+        message=f"파일을 분석할 수 없습니다: {message}",
+        suggestion="파이썬 구문 오류를 수정한 뒤 다시 분석하세요.",
+        contract_version=contract.contract_version,
+    )
 
 
 def run(argv: list[str] | None = None) -> int:
     sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
     parser = build_parser()
     args = parser.parse_args(argv)
     handler = getattr(args, "handler", None)

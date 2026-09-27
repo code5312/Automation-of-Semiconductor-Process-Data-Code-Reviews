@@ -130,11 +130,11 @@
 
 담당(제안): 업무자동화·대시보드 경험자
 
-- [ ] 중복 제거 및 등급 부여
-- [ ] Markdown 리포터 (설계서 9.5절 PR 코멘트 형식)
-- [ ] JSON 리포터
-- [ ] CLI 엔트리포인트 (예: `fab-review check <경로> --contract <파일>`)
-- [ ] CLI 종료 코드 규약: error 있으면 1, 없으면 0 (CI에서 그대로 재사용)
+- [x] 중복 제거 및 등급 부여 (`fab_review/report/__init__.py::dedupe_and_sort`; 등급은 체커가 이미 부여)
+- [x] Markdown 리포터 (설계서 9.5절 형식 + CLAUDE.md 표기 규칙(이모지 없이 `[ERROR]`/`[INFO]`))
+- [x] JSON 리포터
+- [x] CLI 엔트리포인트 (`fab-review check <경로> --contract <파일>`)
+- [x] CLI 종료 코드 규약: error 있으면 1, 없으면 0 (CI에서 그대로 재사용)
 - [ ] [M] 억제 주석 파서: `# fab-review: ignore[FAB-U001] 사유: ...` (사유 누락 시 억제 무효)
 - [ ] [M] 억제 건수 리포트 집계
 - [ ] [R] SARIF 리포터
@@ -143,11 +143,11 @@
 
 ## ✅ 첫 데모 체크포인트
 
-- [ ] 네트워크·LLM 없이 로컬에서 CLI 한 줄로 실행된다
-- [ ] 버그 스크립트 3개 → 각각 기대 규칙 ID가 error로 출력된다
-- [ ] 정상 스크립트 → error 0건
-- [ ] 리포트에 계약 버전, 줄 번호, 수정 제안이 포함된다
-- [ ] 같은 입력을 반복 실행하면 결과가 항상 동일하다
+- [x] 네트워크·LLM 없이 로컬에서 CLI 한 줄로 실행된다 (`python -m fab_review check samples/ --contract contracts/contract.yaml`)
+- [x] 버그 스크립트 3개 → 각각 기대 규칙 ID가 error로 출력된다 (U001/T001/J001+J002)
+- [x] 정상 스크립트 → error 0건 (info도 0건)
+- [x] 리포트에 계약 버전, 줄 번호, 수정 제안이 포함된다
+- [x] 같은 입력을 반복 실행하면 결과가 항상 동일하다 (`tests/test_cli_e2e.py`로 고정)
 
 ---
 

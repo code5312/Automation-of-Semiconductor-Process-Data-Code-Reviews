@@ -144,6 +144,31 @@ CLAUDE.md 규정에 따라 각 Stage 종료 시 보고를 append한다. 설계�
 
 ---
 
+### Stage 5 보고
+
+- 만든 것:
+  - `fab_review/report/__init__.py` (`dedupe_and_sort` — 중복 제거 + 결정론적 정렬)
+  - `fab_review/report/markdown.py`, `fab_review/report/json_report.py`
+  - `fab_review/cli.py`의 `check` 명령 실제 구현 (계약 로딩 → 파일 탐색 → 파싱 → `checkers.run_all` → 리포트 → 종료 코드), `run()`에서 `sys.stderr`도 utf-8로 재설정(발견한 버그, 아래 참고)
+  - `tests/test_report.py`(8건), `tests/test_cli_e2e.py`(7건 — 첫 데모 체크포인트 5개 전부 포함)
+- 검증:
+  - `python -m pytest -q` → `109 passed`
+  - `python -m fab_review check samples/ --contract contracts/contract.yaml --format md --out report.md` 직접 실행 → 종료 코드 1, error 4건(U001/T001/J001/J002), 계약 버전·줄 번호·제안 모두 리포트에 포함 확인
+  - 같은 명령을 두 번 실행해 출력 바이트 단위로 동일함을 `diff`로 직접 확인 (테스트로도 고정)
+  - `samples/normal.py`만 단독 검사 시 종료 코드 0, error/info 모두 0건
+  - 계약 경로 오타(`--contract contracts/does_not_exist.yaml`), 존재하지 않는 대상 경로 → 둘 다 종료 코드 2, 사람이 읽을 수 있는 한글 메시지 확인
+- 체크한 checklist 항목: 5절 [P] 전체 + **첫 데모 체크포인트 5개 전부**
+- 설계서와 다르게 한 것 / 가정한 것:
+  - **버그를 하나 발견해 고쳤다**: `sys.stdout.reconfigure(encoding="utf-8")`만 있고 `sys.stderr`는 그대로 두었던 탓에, 계약 파일을 못 찾는 등 stderr로 나가는 한글 오류 메시지가 Windows PowerShell에서 cp949로 깨졌다. `run()`에서 stderr도 함께 재설정하도록 고쳤다. CLAUDE.md의 "실행 환경: Windows + PowerShell" 절이 stdout만 언급했지만, 이번 경험을 반영해 stdout/stderr 둘 다 재설정하는 것을 앞으로의 기본으로 삼는다.
+  - Markdown 리포트 형식은 설계서 9.5절의 구조(등급/규칙ID/위치/설명/제안)를 따르되, CLAUDE.md 표기 규칙에 맞춰 이모지(🔴)를 빼고 `[ERROR]`/`[INFO]`만 썼다.
+  - `read_csv` 등에서 대상 코드에 실제 구문 오류가 있으면(우리가 만든 데모가 아니라 사용자가 분석을 요청한 코드일 경우) CLI 전체를 죽이지 않고 그 파일에 대해 `FAB-PARSE`라는 임시 규칙 ID로 `info` Finding을 만들어 계속 진행하도록 했다. CLAUDE.md/체크리스트에 명시되지 않은 부분이라 임의로 정한 것 — 재확인 필요.
+- 도메인 검증 필요 값 (이번에 새로 추가된 것): 없음
+- 다음 Stage 전에 결정이 필요한 질문:
+  - 대상 코드의 구문 오류를 `FAB-PARSE`/`info`로 처리하는 방식이 괜찮은지, 아니면 다른 처리(예: 종료 코드 2로 전체 중단)를 원하는지.
+- 제안 커밋 메시지: `Stage 5: 리포트(Markdown/JSON)·CLI check 명령 구현, 첫 데모 체크포인트 통과`
+
+---
+
 ## 도메인 검증 필요 값 (누적 목록)
 
 - `contracts/contract.yaml: sensors.rf_power.sampling_period = "1s"` — 출처 없음, Stage 1에서 임의 지정
