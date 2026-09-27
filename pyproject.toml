@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fab-review"
+version = "0.1.0"
+description = "반도체 공정 데이터 정합성 검증 CLI (프로토타입)"
+requires-python = ">=3.11"
+dependencies = [
+    "pandas",
+    "pyyaml",
+    "pydantic>=2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[project.scripts]
+fab-review = "fab_review.cli:run"
+
+[tool.setuptools.packages.find]
+include = ["fab_review*"]
