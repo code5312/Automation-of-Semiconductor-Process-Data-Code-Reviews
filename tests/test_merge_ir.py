@@ -129,6 +129,32 @@ def test_compute_merge_result_grain_raw_metrology_follows_finer_side():
     assert result.entity == "metrology"  # site 입도(더 세밀함)를 따름
 
 
+def test_compute_merge_result_grain_same_entity_skips_ancestor_key_check():
+    # tool_id+timestamp만 조인 키로 써서 fdc_trace의 계약 키(chamber_id 포함)를
+    # 다 채우지 못하지만, 같은 엔티티끼리의 병합이라 FAB-J001 대상이 아니다.
+    call = parse_merge_call(_call('a.merge(b, on=["tool_id", "timestamp"])'), _ctx())
+    left = GrainInfo(
+        entity="fdc_trace", current_key=("tool_id", "chamber_id", "timestamp"), sensor="rf_power"
+    )
+    right = GrainInfo(
+        entity="fdc_trace", current_key=("tool_id", "chamber_id", "timestamp"), sensor="gas_flow"
+    )
+
+    result = compute_merge_result_grain(left, right, call, CONTRACT)
+    assert result.entity == "fdc_trace"
+    assert result.unknown_reason is None
+
+
+def test_compute_merge_result_grain_same_entity_incomparable_keys_is_unknown_without_j001_label():
+    call = parse_merge_call(_call('a.merge(b, on="x")'), _ctx())
+    left = GrainInfo(entity="wafer", current_key=("lot_id", "wafer_id"))
+    right = GrainInfo(entity="wafer", current_key=("lot_id", "step_id"))
+
+    result = compute_merge_result_grain(left, right, call, CONTRACT)
+    assert result.entity is None
+    assert "FAB-J001" not in (result.unknown_reason or "")
+
+
 def test_compute_merge_result_grain_unknown_entity_is_unknown():
     call = parse_merge_call(_call('a.merge(b, on="lot_id")'), _ctx())
     left = GrainInfo.unknown("추적 실패")

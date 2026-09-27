@@ -119,9 +119,18 @@ def compute_merge_result_grain(
     *현재* 유효 키(``current_key``, groupby 등으로 이미 바뀌었을 수 있음)를 비교해
     판단한다 — 이래야 "metrology를 wafer 입도로 집계한 뒤 조인"한 경우에도 결과가
     올바르게 wafer 입도로 판정된다.
+
+    같은 엔티티끼리의 병합(예: 서로 다른 센서의 ``fdc_trace``)에는 "공통 조상 입도의
+    키를 모두 포함해야 한다"는 FAB-J001 검사를 적용하지 않는다. FAB-J001은 부모-자식
+    엔티티 사이의 계보 위반을 잡는 규칙이라, 같은 엔티티의 부분 키 병합은 대상이
+    아니다(사용자 결정, docs/progress.md Stage 3 참고). 이 경우엔 두 피연산자의
+    현재 키를 직접 비교해 더 세밀한(포함하는) 쪽을 따른다.
     """
     if left.entity is None or right.entity is None:
         return GrainInfo.unknown("병합 대상 중 하나 이상의 엔티티를 알 수 없음")
+
+    if left.entity == right.entity:
+        return _finer_by_current_key(left, right, ambiguous_reason="같은 엔티티의 서로 다른 입도를 병합해 결과 입도를 판단할 수 없음")
 
     ancestor = contract.common_ancestor(left.entity, right.entity)
     if ancestor is None:
@@ -134,10 +143,14 @@ def compute_merge_result_grain(
             "조인 키가 공통 조상 입도의 키를 포함하지 않거나(FAB-J001) 조인 키를 알 수 없음"
         )
 
+    return _finer_by_current_key(left, right, ambiguous_reason="더 세밀한 쪽 입도를 판단할 수 없음")
+
+
+def _finer_by_current_key(left: GrainInfo, right: GrainInfo, *, ambiguous_reason: str) -> GrainInfo:
     left_key = set(left.current_key)
     right_key = set(right.current_key)
     if left_key >= right_key:
         return left
     if right_key >= left_key:
         return right
-    return GrainInfo.unknown("더 세밀한 쪽 입도를 판단할 수 없음")
+    return GrainInfo.unknown(ambiguous_reason)

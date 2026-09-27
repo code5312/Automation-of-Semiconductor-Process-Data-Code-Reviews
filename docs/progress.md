@@ -113,6 +113,8 @@ CLAUDE.md 규정에 따라 각 Stage 종료 시 보고를 append한다. 설계�
   - `bug_time.py`가 FAB-T001과 함께 FAB-J001(또는 그 정보용 변형)도 같이 낼 수 있다는 점이 괜찮은지, 아니면 Stage 4에서 "같은 엔티티끼리의 병합은 J001 대상에서 제외"하는 예외를 추가해야 하는지.
 - 제안 커밋 메시지: `Stage 3: AST 흐름 추적기·merge 해석기·Finding 모델 구현`
 
+**해결**: 사용자가 "같은 엔티티끼리 병합은 J001에서 제외"를 승인. `compute_merge_result_grain`을 수정해 `left.entity == right.entity`인 경우 공통 조상 키 검사를 건너뛰고 `current_key` 비교로만 결과 입도를 정한다. `bug_time.py`의 `merged`는 이제 unknown이 아니라 `entity="fdc_trace"`로 정상 추적된다. 테스트 2건 추가(`tests/test_merge_ir.py`), `76 passed`로 확인.
+
 ---
 
 ## 도메인 검증 필요 값 (누적 목록)
